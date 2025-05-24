@@ -23,7 +23,7 @@
       <bool>true</bool>
      </property>
      <property name="currentIndex">
-      <number>2</number>
+      <number>0</number>
      </property>
      <widget class="QWidget" name="monitoringTab">
       <attribute name="title">
@@ -71,7 +71,7 @@
                   <number>6</number>
                  </property>
                  <item>
-                  <widget class="QLineEdit" name="remoteHoursInput">
+                  <widget class="QLineEdit" name="hoursInput">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                      <horstretch>0</horstretch>
@@ -96,7 +96,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLineEdit" name="remoteMinutInput">
+                  <widget class="QLineEdit" name="minutInput">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                      <horstretch>0</horstretch>
@@ -109,7 +109,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QLineEdit" name="remoteSecondsInput">
+                  <widget class="QLineEdit" name="secondsInput">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                      <horstretch>0</horstretch>
@@ -122,7 +122,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="remoteMeasureSpeedButton">
+                  <widget class="QPushButton" name="measureSpeedButton">
                    <property name="sizePolicy">
                     <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                      <horstretch>0</horstretch>
@@ -135,7 +135,7 @@
                   </widget>
                  </item>
                  <item>
-                  <widget class="QPushButton" name="remoteClearGraphs">
+                  <widget class="QPushButton" name="clearGraphs">
                    <property name="text">
                     <string>Сбросить</string>
                    </property>
@@ -152,14 +152,14 @@
                   <number>6</number>
                  </property>
                  <item>
-                  <widget class="QCheckBox" name="remoteHideUpload">
+                  <widget class="QCheckBox" name="hideUpload">
                    <property name="text">
                     <string>Скрыть график скорости отдачи</string>
                    </property>
                   </widget>
                  </item>
                  <item>
-                  <widget class="QCheckBox" name="remoteHideLoad">
+                  <widget class="QCheckBox" name="hideLoad">
                    <property name="text">
                     <string>Скрыть график скорости загрузки</string>
                    </property>
@@ -207,7 +207,7 @@
                    <number>0</number>
                   </property>
                   <item row="0" column="0">
-                   <widget class="QGraphicsView" name="remoteGraph"/>
+                   <widget class="QGraphicsView" name="graph"/>
                   </item>
                  </layout>
                 </widget>
@@ -230,6 +230,12 @@
            <property name="enabled">
             <bool>true</bool>
            </property>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
            <property name="autoFillBackground">
             <bool>true</bool>
            </property>
@@ -241,9 +247,9 @@
            </property>
            <layout class="QGridLayout" name="gridLayout_3">
             <item row="0" column="0">
-             <widget class="QListWidget" name="remoteList">
+             <widget class="QListWidget" name="adapterListWidget">
               <property name="sizePolicy">
-               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+               <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
                 <horstretch>0</horstretch>
                 <verstretch>0</verstretch>
                </sizepolicy>
@@ -269,7 +275,7 @@
            </property>
            <layout class="QGridLayout" name="gridLayout_4">
             <item row="0" column="0">
-             <widget class="QTableWidget" name="remoteInfoTable">
+             <widget class="QTableWidget" name="adapterInfoTable">
               <property name="sizePolicy">
                <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                 <horstretch>0</horstretch>
