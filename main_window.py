@@ -3,7 +3,7 @@ from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QIcon
 from datetime import datetime
-
+from interface_ui import Ui_MainWindow  # импорт класса из сгенерированного файла
 from graph import Graph
 from network_monitoring import NetworkMonitoring
 from ping_tool import PingTracerTool
@@ -13,17 +13,18 @@ from database import Database
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        loadUi("interface.ui", self) 
+        self.ui = Ui_MainWindow()
+        self.ui.setupUi(self)
 
         # Устанавливаем иконку для окна
         self.setWindowIcon(QIcon("icons/icon.png"))
 
         self.network_monitoring = NetworkMonitoring()
         self.ping_tracer_tool = PingTracerTool(self)
-        self.graph = Graph(self.graphWidget)
-        self.adapter_info_table = AdapterInfoTable(self.infoTable)
+        self.graph = Graph(self.ui.graphWidget)
+        self.adapter_info_table = AdapterInfoTable(self.ui.infoTable)
         self.db = Database()
-        self.pingButton.setEnabled(False)
+        self.ui.pingButton.setEnabled(False)
 
 
         self.load_adapters()
@@ -41,18 +42,18 @@ class MainWindow(QMainWindow):
     def init_database_tab(self):
         """Инициализация вкладки базы данных"""
         # Добавляем таблицы в комбобокс с русскими названиями
-        self.dbTableSelectCombo.addItems(['Пинги', 'Трассировки'])
+        self.ui.dbTableSelectCombo.addItems(['Пинги', 'Трассировки'])
         
         # Подключаем обработчики
-        self.dbTableSelectCombo.currentTextChanged.connect(self.load_table_data)
-        self.dbRefreshButton.clicked.connect(self.load_table_data)
+        self.ui.dbTableSelectCombo.currentTextChanged.connect(self.load_table_data)
+        self.ui.dbRefreshButton.clicked.connect(self.load_table_data)
         
         # Загружаем данные первой таблицы
         self.load_table_data()
 
     def load_table_data(self):
         """Загрузка данных из выбранной таблицы"""
-        table_name = self.dbTableSelectCombo.currentText()
+        table_name = self.ui.dbTableSelectCombo.currentText()
         
         if table_name == 'Пинги':
             data = self.db.get_ping_history(limit=100)
@@ -60,49 +61,45 @@ class MainWindow(QMainWindow):
             data = self.db.get_trace_history(limit=100)
         
         # Настраиваем таблицу
-        self.dbDataTable.setColumnCount(3)
-        self.dbDataTable.setHorizontalHeaderLabels(['Адрес', 'Время', 'Результат'])
-        self.dbDataTable.setRowCount(len(data))
+        self.ui.dbDataTable.setColumnCount(3)
+        self.ui.dbDataTable.setHorizontalHeaderLabels(['Адрес', 'Время', 'Результат'])
+        self.ui.dbDataTable.setRowCount(len(data))
         
         # Заполняем таблицу данными
         for row, (address, timestamp, result) in enumerate(data):
-            self.dbDataTable.setItem(row, 0, QTableWidgetItem(address))
-            self.dbDataTable.setItem(row, 1, QTableWidgetItem(str(timestamp)))
-            self.dbDataTable.setItem(row, 2, QTableWidgetItem(result))
+            self.ui.dbDataTable.setItem(row, 0, QTableWidgetItem(address))
+            self.ui.dbDataTable.setItem(row, 1, QTableWidgetItem(str(timestamp)))
+            self.ui.dbDataTable.setItem(row, 2, QTableWidgetItem(result))
         
         # Подгоняем размеры столбцов под содержимое
-        self.dbDataTable.resizeColumnsToContents()
+        self.ui.dbDataTable.resizeColumnsToContents()
 
     def load_adapters(self):
         adapters = self.network_monitoring.get_adapters()
-        self.adapterList.clear()
+        self.ui.adapterList.clear()
         for name in adapters.keys():
-            self.adapterList.addItem(name)
+            self.ui.adapterList.addItem(name)
 
     def connect_buttons(self):
-        self.addressInput.textChanged.connect(self.toggle_ping_button)
-        self.measureSpeedButton.clicked.connect(self.on_measure_speed_clicked)
-        self.adapterList.itemClicked.connect(self.on_adapter_selected)
-        self.clearGraphs.clicked.connect(self.on_clear_graphs_clicked)
-        self.pingButton.clicked.connect(self.execute_ping_trace)
-        # ❗️ новые сигналы
-        self.hideDownload.stateChanged.connect(self.graph.toggle_download)
-        self.hideUpload.stateChanged.connect(self.graph.toggle_upload)
-
-        # чтобы состояние чекбоксов отразилось сразу после запуска
-        self.graph.toggle_download(self.hideDownload.checkState())
-        self.graph.toggle_upload(self.hideUpload.checkState())
+        self.ui.addressInput.textChanged.connect(self.toggle_ping_button)
+        self.ui.measureSpeedButton.clicked.connect(self.on_measure_speed_clicked)
+        self.ui.adapterList.itemClicked.connect(self.on_adapter_selected)
+        self.ui.clearGraphs.clicked.connect(self.on_clear_graphs_clicked)
+        self.ui.pingButton.clicked.connect(self.execute_ping_trace)
+        self.ui.hideDownload.stateChanged.connect(self.graph.toggle_download)
+        self.ui.hideUpload.stateChanged.connect(self.graph.toggle_upload)
+        self.graph.toggle_download(self.ui.hideDownload.checkState())
+        self.graph.toggle_upload(self.ui.hideUpload.checkState())
     
     def toggle_ping_button(self, text):
-        self.pingButton.setEnabled(bool(text.strip()))
+        self.ui.pingButton.setEnabled(bool(text.strip()))
 
     def execute_ping_trace(self):
-        address = self.addressInput.text().strip()
-        self.ping_tracer_tool.execute_ping_trace(address)
+        self.ping_tracer_tool.execute_ping_trace()
 
     def update_current_adapter(self):
-        if self.adapterList.currentItem():
-            adapter_name = self.adapterList.currentItem().text()
+        if self.ui.adapterList.currentItem():
+            adapter_name = self.ui.adapterList.currentItem().text()
             info = self.network_monitoring.get_adapter_info_by_name(adapter_name)
 
             elapsed_time = 0
@@ -137,7 +134,7 @@ class MainWindow(QMainWindow):
 
             self.network_monitoring.start_measuring()
             self.graph.clear()
-            self.measureSpeedButton.setText("Остановить замер")
+            self.ui.measureSpeedButton.setText("Остановить замер")
             self.update_timer.start()
         else:
             self._timed_measure_duration = None
@@ -147,7 +144,7 @@ class MainWindow(QMainWindow):
         """Останавливает замер и обновляет UI"""
         self.network_monitoring.stop_measuring()
         self.update_timer.stop()
-        self.measureSpeedButton.setText("Начать замер")
+        self.ui.measureSpeedButton.setText("Начать замер")
 
     def on_clear_graphs_clicked(self):
         """Очищает данные графика после подтверждения"""
@@ -161,14 +158,14 @@ class MainWindow(QMainWindow):
         if reply == QMessageBox.StandardButton.Yes:
             self.graph.clear()
             self._timed_measure_duration = None
-            if self.adapterList.currentItem():
-                adapter_name = self.adapterList.currentItem().text()
+            if self.ui.adapterList.currentItem():
+                adapter_name = self.ui.adapterList.currentItem().text()
                 info = self.network_monitoring.get_adapter_info_by_name(adapter_name)
                 self.adapter_info_table.update_info(info, 0, False)
 
     def on_data_updated(self, info, elapsed_time):
         """Обработчик обновления данных от NetworkMonitoring"""
-        if self.adapterList.currentItem() and self.adapterList.currentItem().text() == info['id']:
+        if self.ui.adapterList.currentItem() and self.ui.adapterList.currentItem().text() == info['id']:
             current_download = info.get('current_download', 0)
             current_upload = info.get('current_upload', 0)
             self.graph.update_data(elapsed_time, current_download, current_upload)

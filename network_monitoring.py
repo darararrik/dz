@@ -1,6 +1,6 @@
 import psutil
 from datetime import datetime
-from PyQt6.QtCore import QTimer, pyqtSignal, QObject
+from PyQt6.QtCore import pyqtSignal, QObject
 
 class NetworkMonitoring(QObject):
     data_updated = pyqtSignal(dict, float)  # Сигнал для обновления данных (info, elapsed_time)

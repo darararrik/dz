@@ -1,7 +1,6 @@
 import platform
 import subprocess
 from PyQt6.QtWidgets import QListWidgetItem
-from database import Database
 
 class PingTracerTool:
     def __init__(self, main_window):
@@ -10,18 +9,18 @@ class PingTracerTool:
 
     def execute_ping_trace(self):
         try:
-            if self.main_window.pingChoice.isChecked():
+            if self.main_window.ui.pingChoice.isChecked():
                 # Выполняем ping
                 if platform.system().lower() == "windows":
-                    command = ["ping", "-n", "4", self.main_window.addressInput.text().strip()]
+                    command = ["ping", "-n", "4", self.main_window.ui.addressInput.text().strip()]
                 else:
-                    command = ["ping", "-c", "4", self.main_window.addressInput.text().strip()]
-            elif self.main_window.tracerChoice.isChecked():
+                    command = ["ping", "-c", "4", self.main_window.ui.addressInput.text().strip()]
+            elif self.main_window.ui.tracerChoice.isChecked():
                 # Выполняем tracert/traceroute
                 if platform.system().lower() == "windows":
-                    command = ["tracert", self.main_window.addressInput.text().strip()]
+                    command = ["tracert", self.main_window.ui.addressInput.text().strip()]
                 else:
-                    command = ["traceroute", self.main_window.addressInput.text().strip()]
+                    command = ["traceroute", self.main_window.ui.addressInput.text().strip()]
 
             process = subprocess.Popen(
                 command,
@@ -35,23 +34,23 @@ class PingTracerTool:
             output, error = process.communicate()
             
             # Сохраняем результат в базу данных
-            if self.main_window.pingChoice.isChecked():
-                self.main_window.db.save_ping(self.main_window.addressInput.text().strip(), output)
+            if self.main_window.ui.pingChoice.isChecked():
+                self.main_window.db.save_ping(self.main_window.ui.addressInput.text().strip(), output)
             else:
-                self.main_window.db.save_trace(self.main_window.addressInput.text().strip(), output)
+                self.main_window.db.save_trace(self.main_window.ui.addressInput.text().strip(), output)
             
             # Очищаем список перед добавлением новых результатов
-            self.main_window.outputList.clear()
+            self.main_window.ui.outputList.clear()
             
             # Добавляем результаты в outputList
             for line in output.splitlines():
                 item = QListWidgetItem(line)
-                self.main_window.outputList.addItem(item)
+                self.main_window.ui.outputList.addItem(item)
 
             if error:
                 error_item = QListWidgetItem(f"Ошибка: {error}")
-                self.main_window.outputList.addItem(error_item)
+                self.main_window.ui.outputList.addItem(error_item)
 
         except Exception as e:
             error_item = QListWidgetItem(f"Ошибка: {str(e)}")
-            self.main_window.outputList.addItem(error_item)
+            self.main_window.ui.outputList.addItem(error_item)
