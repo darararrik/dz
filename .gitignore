@@ -3,7 +3,6 @@ __pycache__/
 *.ui
 venv/
 .vscode/
-dist/
 build/
 *.egg-info/
 .env
