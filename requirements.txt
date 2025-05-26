@@ -1,0 +1,8 @@
+PyQt6>=6.4.0
+pyqtgraph>=0.13.3
+psutil>=5.9.0
+numpy>=1.21.0 #требуется для pyqtgraph
+#втсроенные библиотеки
+#subprocess
+#platform
+#sqlite3 
