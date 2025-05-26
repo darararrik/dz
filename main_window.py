@@ -17,22 +17,24 @@ class MainWindow(QMainWindow):
 
         # Устанавливаем иконку для окна
         self.setWindowIcon(QIcon("icons/icon.png"))
-        self._timed_measure_duration = None
+
         self.network_monitoring = NetworkMonitoring()
         self.ping_tracer_tool = PingTracerTool(self)
-        self.pingButton.setEnabled(False)
         self.graph = Graph(self.graphWidget)
         self.adapter_info_table = AdapterInfoTable(self.infoTable)
-
-
         self.db = Database()
+        self.pingButton.setEnabled(False)
+
 
         self.load_adapters()
         self.connect_buttons()
         self.init_database_tab()
 
-
-
+        # Для хранения заданной длительности замера
+        self._timed_measure_duration = None
+        self.update_timer = QTimer()
+        self.update_timer.timeout.connect(self.update_current_adapter)
+        self.update_timer.setInterval(1000) 
         # Подключаем сигнал обновления данных
         self.network_monitoring.data_updated.connect(self.on_data_updated)
 
@@ -52,7 +54,6 @@ class MainWindow(QMainWindow):
         """Загрузка данных из выбранной таблицы"""
         table_name = self.dbTableSelectCombo.currentText()
         
-        # Получаем данные из базы
         if table_name == 'Пинги':
             data = self.db.get_ping_history(limit=100)
         else:
@@ -83,11 +84,21 @@ class MainWindow(QMainWindow):
         self.measureSpeedButton.clicked.connect(self.on_measure_speed_clicked)
         self.adapterList.itemClicked.connect(self.on_adapter_selected)
         self.clearGraphs.clicked.connect(self.on_clear_graphs_clicked)
-        self.pingButton.clicked.connect(self.ping_tracer_tool.execute_ping_trace)
+        self.pingButton.clicked.connect(self.execute_ping_trace)
+        # ❗️ новые сигналы
+        self.hideDownload.stateChanged.connect(self.graph.toggle_download)
+        self.hideUpload.stateChanged.connect(self.graph.toggle_upload)
 
+        # чтобы состояние чекбоксов отразилось сразу после запуска
+        self.graph.toggle_download(self.hideDownload.checkState())
+        self.graph.toggle_upload(self.hideUpload.checkState())
+    
     def toggle_ping_button(self, text):
         self.pingButton.setEnabled(bool(text.strip()))
 
+    def execute_ping_trace(self):
+        address = self.addressInput.text().strip()
+        self.ping_tracer_tool.execute_ping_trace(address)
 
     def update_current_adapter(self):
         if self.adapterList.currentItem():
@@ -127,6 +138,7 @@ class MainWindow(QMainWindow):
             self.network_monitoring.start_measuring()
             self.graph.clear()
             self.measureSpeedButton.setText("Остановить замер")
+            self.update_timer.start()
         else:
             self._timed_measure_duration = None
             self.stop_measurement_and_update_ui()
@@ -134,6 +146,7 @@ class MainWindow(QMainWindow):
     def stop_measurement_and_update_ui(self):
         """Останавливает замер и обновляет UI"""
         self.network_monitoring.stop_measuring()
+        self.update_timer.stop()
         self.measureSpeedButton.setText("Начать замер")
 
     def on_clear_graphs_clicked(self):

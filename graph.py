@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-
+from PyQt6.QtCore import Qt
 class Graph:
     def __init__(self, graph_widget):
         self.graph_widget = graph_widget
@@ -10,11 +10,10 @@ class Graph:
     def _init_graph_settings(self):
         """Инициализация настроек графика"""
         self.graph_widget.setBackground('w')
-        self.graph_widget.setTitle("График скорости", color="b", size="12pt")
-        styles = {'color': '#f00', 'font-size': '10pt'}
+        self.graph_widget.setTitle("График скорости", color="black", size="16pt")
+        styles = {'color': '#000', 'font-size': '12pt', 'bold': True} 
         self.graph_widget.setLabel('left', 'Скорость (Мбит/с)', **styles)
         self.graph_widget.setLabel('bottom', 'Время (сек)', **styles)
-        self.graph_widget.addLegend()
         self.graph_widget.showGrid(x=True, y=True)
 
     def _init_data_structures(self):
@@ -72,3 +71,11 @@ class Graph:
         self.download_plot.setData([], [])
         self.upload_plot.setData([], [])
         self.graph_widget.enableAutoRange()
+    
+    def toggle_download(self, state):
+        """Включение/выключение отображения линии загрузки"""
+        self.download_plot.setVisible(state != Qt.CheckState.Checked.value)
+
+    def toggle_upload(self, state):
+        """Включение/выключение отображения линии отдачи"""
+        self.upload_plot.setVisible(state != Qt.CheckState.Checked.value)
