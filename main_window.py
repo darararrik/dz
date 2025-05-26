@@ -1,8 +1,10 @@
-from PyQt6.QtWidgets import QMainWindow, QTableWidgetItem
+from PyQt6.QtWidgets import QMainWindow, QTableWidgetItem, QListWidgetItem
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer
 import pyqtgraph as pg # Импортируем pyqtgraph
 from datetime import datetime
+import platform
+import subprocess
 
 from adapter_managment import NetworkMonitoring
 
@@ -47,6 +49,7 @@ class MainWindow(QMainWindow):
         self.measureSpeedButton.clicked.connect(self.on_measure_speed_clicked)
         self.adapterList.itemClicked.connect(self.on_adapter_selected)
         self.clearGraphs.clicked.connect(self.on_clear_graphs_clicked)
+        self.pingButton.clicked.connect(self.execute_ping_trace)
 
     def update_current_adapter(self):
         if self.adapterList.currentItem():
@@ -254,3 +257,48 @@ class MainWindow(QMainWindow):
         # Подгоняем размер столбцов под содержимое
         self.infoTable.resizeColumnsToContents()
 
+    def execute_ping_trace(self):
+            address = self.addressInput.text().strip()
+            if not address:
+                return
+            
+            try:
+                if self.pingChoice.isChecked():
+                    # Выполняем ping
+                    if platform.system().lower() == "windows":
+                        command = ["ping", "-n", "4", address]
+                    else:
+                        command = ["ping", "-c", "4", address]
+                elif self.tracerChoice.isChecked():
+                    # Выполняем tracert/traceroute
+                    if platform.system().lower() == "windows":
+                        command = ["tracert", address]
+                    else:
+                        command = ["traceroute", address]
+
+                process = subprocess.Popen(
+                    command,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    universal_newlines=True,
+                    encoding='cp866' if platform.system().lower() == "windows" else 'utf-8'
+                )
+
+                # Читаем вывод команды
+                output, error = process.communicate()
+                
+                # Очищаем список перед добавлением новых результатов
+                #self.outputList.clear()
+                
+                # Добавляем результаты в outputList
+                for line in output.splitlines():
+                    item = QListWidgetItem(line)
+                    self.outputList.addItem(item)
+
+                if error:
+                    error_item = QListWidgetItem(f"Ошибка: {error}")
+                    self.outputList.addItem(error_item)
+
+            except Exception as e:
+                error_item = QListWidgetItem(f"Ошибка: {str(e)}")
+                self.outputList.addItem(error_item)
