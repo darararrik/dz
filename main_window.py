@@ -6,7 +6,7 @@ from datetime import datetime
 import platform
 import subprocess
 
-from adapter_managment import NetworkMonitoring
+from network_monitoring import NetworkMonitoring
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -14,12 +14,21 @@ class MainWindow(QMainWindow):
         loadUi("interface.ui", self) 
         self.load_adapters()
         self.connect_buttons()
-        
+        self.init_graph()
         # Создаем таймер для обновления данных
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_current_adapter)
         self.update_timer.setInterval(1000)  # Обновление каждую секунду
 
+        self.time_points = []
+        self.download_speeds = []
+        self.upload_speeds = []
+        self.download_plot = self.graphWidget.plot(self.time_points, self.download_speeds, pen=pg.mkPen(color='b', width=2), name='Загрузка')
+        self.upload_plot = self.graphWidget.plot(self.time_points, self.upload_speeds, pen=pg.mkPen(color='r', width=2), name='Отдача')
+
+        # Для хранения заданной длительности замера
+        self._timed_measure_duration = None
+    def init_graph(self):
         # Инициализация графика
         self.graphWidget.setBackground('w')
         self.graphWidget.setTitle("График скорости", color="b", size="12pt")
@@ -28,16 +37,6 @@ class MainWindow(QMainWindow):
         self.graphWidget.setLabel('bottom', 'Время (сек)', **styles)
         self.graphWidget.addLegend()
         self.graphWidget.showGrid(x=True, y=True)
-
-        self.time_points = []
-        self.download_speeds = []
-        self.upload_speeds = []
-
-        self.download_plot = self.graphWidget.plot(self.time_points, self.download_speeds, pen=pg.mkPen(color='b', width=2), name='Загрузка')
-        self.upload_plot = self.graphWidget.plot(self.time_points, self.upload_speeds, pen=pg.mkPen(color='r', width=2), name='Отдача')
-
-        # Для хранения заданной длительности замера
-        self._timed_measure_duration = None
 
     def load_adapters(self):
         adapters = NetworkMonitoring.get_adapters()
@@ -54,11 +53,9 @@ class MainWindow(QMainWindow):
     def update_current_adapter(self):
         if self.adapterList.currentItem():
             adapter_name = self.adapterList.currentItem().text()
-            # Получаем информацию об адаптере из NetworkMonitoring
             info = NetworkMonitoring.get_adapter_info_by_name(adapter_name)
 
             elapsed_time = 0
-            # Обновляем график и рассчитываем прошедшее время только при активном измерении
             if NetworkMonitoring._is_measuring and NetworkMonitoring._measure_start_time:
                 elapsed_time = (datetime.now() - NetworkMonitoring._measure_start_time).total_seconds()
                 current_download = info.get('current_download', 0)
@@ -82,75 +79,51 @@ class MainWindow(QMainWindow):
                 self.graphWidget.enableAutoRange(axis='y', enable=True)
                 if self.time_points:
                     self.graphWidget.setXRange(self.time_points[0], self.time_points[-1])
-            else:\
+            else:
                 # Если замер не идет, сбрасываем время и графики (если нужно)
                 self.time_points = []
                 self.download_speeds = []
                 self.upload_speeds = []
                 self.download_plot.setData([], [])
                 self.upload_plot.setData([], [])
-                # Сбрасываем автоматическое масштабирование
                 self.graphWidget.enableAutoRange()
 
 
-            # Передаем прошедшее время в секундах для обновления таблицы
             self.update_adapter_info_table(info, elapsed_time)
 
     def on_adapter_selected(self, item):
         adapter_name = item.text()
         info = NetworkMonitoring.get_adapter_info_by_name(adapter_name)
-        # При выборе адаптера, замер не идет, поэтому прошедшее время 0
         self.update_adapter_info_table(info, 0)
 
     def on_measure_speed_clicked(self):
         if not NetworkMonitoring._is_measuring:
-            # Получаем время замера из input полей (часы, минуты, секунды)
             hours = 0
             minutes = 0
             seconds = 0
-            try:
-                hours = int(self.hoursInput.text()) if self.hoursInput.text() else 0
-            except ValueError:
-                pass # Оставляем 0
-            try:
-                minutes = int(self.minutesInput.text()) if self.minutesInput.text() else 0
-            except ValueError:
-                pass # Оставляем 0
-            try:
-                seconds = int(self.secondsInput.text()) if self.secondsInput.text() else 0
-            except ValueError:
-                pass # Оставляем 0
 
             measure_duration = hours * 3600 + minutes * 60 + seconds
 
             if measure_duration <= 0:
-                measure_duration = None # Если общая длительность 0 или отрицательная, замер бесконечный
+                measure_duration = None
 
-            # Сохраняем заданную длительность для использования в on_measure_timer_finished
             self._timed_measure_duration = measure_duration
 
             NetworkMonitoring.start_measuring()
 
-            # Очищаем данные графика и добавляем начальную точку (0,0)
             self.time_points = [0]
             self.download_speeds = [0]
             self.upload_speeds = [0]
             self.download_plot.setData(self.time_points, self.download_speeds)
             self.upload_plot.setData(self.time_points, self.upload_speeds)
-            # Сбрасываем масштабирование графика
             self.graphWidget.enableAutoRange()
 
 
             self.measureSpeedButton.setText("Остановить замер")
             self.update_timer.start()
 
-            # Если задана длительность замера, запускаем одноразовый таймер для остановки
-            if measure_duration is not None:
-                QTimer.singleShot(measure_duration * 1000, self.on_measure_timer_finished)
 
         else:
-            # Если замер идет, останавливаем его вручную
-            # Сбрасываем сохраненную длительность
             self._timed_measure_duration = None
             self.stop_measurement_and_update_ui()
 
@@ -207,18 +180,13 @@ class MainWindow(QMainWindow):
         self.upload_speeds = []
         self.download_plot.setData([], [])
         self.upload_plot.setData([], [])
-        # Сбрасываем автоматическое масштабирование
         self.graphWidget.enableAutoRange()
-        # Сбрасываем сохраненную длительность
         self._timed_measure_duration = None
 
     def update_adapter_info_table(self, info, elapsed_time_seconds):
-        # Настраиваем таблицу на 2 столбца
         self.infoTable.setColumnCount(2)
         self.infoTable.setHorizontalHeaderLabels(['Параметр', 'Значение'])
 
-        # Форматируем прошедшее время в ЧЧ:ММ:СС
-        # Если замер идет ИЛИ если это финальное обновление после таймера (elapsed_time_seconds > 0)
         if NetworkMonitoring._is_measuring or elapsed_time_seconds > 0:
             hours = int(elapsed_time_seconds // 3600)
             minutes = int((elapsed_time_seconds % 3600) // 60)

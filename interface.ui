@@ -36,7 +36,7 @@
     <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <widget class="QWidget" name="remote_monitoring">
        <property name="enabled">
@@ -140,81 +140,6 @@
             <layout class="QGridLayout" name="gridLayout_14">
              <item row="0" column="0">
               <layout class="QHBoxLayout" name="timer">
-               <item>
-                <widget class="QLineEdit" name="hoursInput">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>60</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>60</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="placeholderText">
-                  <string>Часы</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="minutesInput">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>60</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>60</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="placeholderText">
-                  <string>Мин</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <widget class="QLineEdit" name="secondsInput">
-                 <property name="sizePolicy">
-                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                   <horstretch>0</horstretch>
-                   <verstretch>0</verstretch>
-                  </sizepolicy>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>60</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="maximumSize">
-                  <size>
-                   <width>60</width>
-                   <height>36</height>
-                  </size>
-                 </property>
-                 <property name="placeholderText">
-                  <string>Сек</string>
-                 </property>
-                </widget>
-               </item>
                <item>
                 <widget class="QPushButton" name="measureSpeedButton">
                  <property name="sizePolicy">
