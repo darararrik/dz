@@ -3,9 +3,8 @@ import platform
 import subprocess
 from PyQt6.QtWidgets import QListWidgetItem
 
-class PingTool():
-    def execute_ping_trace(self):
-        address = self.addressInput.text().strip()
+class PingTracerTool():
+    def execute_ping_trace(self, address):
         if not address:
             return
         

@@ -1,37 +1,51 @@
 import psutil
 from datetime import datetime
+from PyQt6.QtCore import QTimer, pyqtSignal, QObject
 
-class NetworkMonitoring:
-    _stats_history = {}  # Для хранения истории измерений
-    _is_measuring = False  # Флаг активного измерения
-    _measure_start_time = None  # Время начала замера
-    @staticmethod
-    def start_measuring():
-        NetworkMonitoring._is_measuring = True
-        # Сбрасываем историю при начале нового измерения
-        NetworkMonitoring._stats_history = {}
-        NetworkMonitoring._measure_start_time = datetime.now()
+class NetworkMonitoring(QObject):
+    data_updated = pyqtSignal(dict, float)  # Сигнал для обновления данных (info, elapsed_time)
+    
+    def __init__(self):
+        super().__init__()
+        self._stats_history = {}
+        self._is_measuring = False
+        self._measure_start_time = None 
+        
 
-    @staticmethod
-    def stop_measuring():
-        NetworkMonitoring._is_measuring = False
-        NetworkMonitoring._measure_start_time = None
+    def _update_data(self):
+        """Внутренний метод для обновления данных"""
+        if self._is_measuring:
+            elapsed_time = (datetime.now() - self._measure_start_time).total_seconds()
+            # Получаем данные для всех адаптеров
+            for adapter_name in self.get_adapters().keys():
+                info = self.get_adapter_info_by_name(adapter_name)
+                if info:
+                    self.data_updated.emit(info, elapsed_time)
 
-    @staticmethod
-    def get_adapters():
+    def start_measuring(self):
+        """Начать измерение скорости"""
+        self._is_measuring = True
+        self._stats_history = {}
+        self._measure_start_time = datetime.now()
+
+    def stop_measuring(self):
+        """Остановить измерение скорости"""
+        self._is_measuring = False
+        self._measure_start_time = None
+
+    def get_adapters(self):
         return psutil.net_if_addrs()
 
-    @staticmethod
-    def get_adapter_info_by_name(adapter_name):
-        adapters = psutil.net_if_addrs()
+    def get_adapter_info_by_name(self, adapter_name):
+        adapters = self.get_adapters()
         stats = psutil.net_if_stats()
         
         if adapter_name not in adapters:
             return None
 
         # Вычисляем время замера
-        if NetworkMonitoring._is_measuring and NetworkMonitoring._measure_start_time:
-            delta = datetime.now() - NetworkMonitoring._measure_start_time
+        if self._is_measuring and self._measure_start_time:
+            delta = datetime.now() - self._measure_start_time
             measurement_time = str(delta).split('.')[0]  # ЧЧ:ММ:СС
         else:
             measurement_time = '0'
@@ -76,9 +90,9 @@ class NetworkMonitoring:
             counter = io_counters[adapter_name]
             
             # Инициализируем историю для адаптера, если идет измерение
-            if NetworkMonitoring._is_measuring:
-                if adapter_name not in NetworkMonitoring._stats_history:
-                    NetworkMonitoring._stats_history[adapter_name] = {
+            if self._is_measuring:
+                if adapter_name not in self._stats_history:
+                    self._stats_history[adapter_name] = {
                         'last_bytes_recv': counter.bytes_recv,
                         'last_bytes_sent': counter.bytes_sent,
                         'max_download': 0,
@@ -88,7 +102,7 @@ class NetworkMonitoring:
                         'count': 0
                     }
 
-                history = NetworkMonitoring._stats_history[adapter_name]
+                history = self._stats_history[adapter_name]
                 
                 # Рассчитываем текущую скорость
                 bytes_recv = counter.bytes_recv - history['last_bytes_recv']

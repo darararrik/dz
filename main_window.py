@@ -1,45 +1,40 @@
-from PyQt6.QtWidgets import QMainWindow, QTableWidgetItem, QListWidgetItem
+from PyQt6.QtWidgets import QMainWindow, QTableWidgetItem, QMessageBox
 from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer
-import pyqtgraph as pg # Импортируем pyqtgraph
 from datetime import datetime
-import platform
-import subprocess
 
+from graph import Graph
 from network_monitoring import NetworkMonitoring
+from ping_tool import PingTracerTool
+from adapter_info_table import AdapterInfoTable
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         loadUi("interface.ui", self) 
+
+        self.network_monitoring = NetworkMonitoring()
+        self.ping_tracer_tool = PingTracerTool()
+        self.graph = Graph(self.graphWidget)
+        self.adapter_info_table = AdapterInfoTable(self.infoTable)
+
+        # Инициализация интерфейса
         self.load_adapters()
         self.connect_buttons()
-        self.init_graph()
+
         # Создаем таймер для обновления данных
         self.update_timer = QTimer()
         self.update_timer.timeout.connect(self.update_current_adapter)
-        self.update_timer.setInterval(1000)  # Обновление каждую секунду
-
-        self.time_points = []
-        self.download_speeds = []
-        self.upload_speeds = []
-        self.download_plot = self.graphWidget.plot(self.time_points, self.download_speeds, pen=pg.mkPen(color='b', width=2), name='Загрузка')
-        self.upload_plot = self.graphWidget.plot(self.time_points, self.upload_speeds, pen=pg.mkPen(color='r', width=2), name='Отдача')
+        self.update_timer.setInterval(1000)  
 
         # Для хранения заданной длительности замера
         self._timed_measure_duration = None
-    def init_graph(self):
-        # Инициализация графика
-        self.graphWidget.setBackground('w')
-        self.graphWidget.setTitle("График скорости", color="b", size="12pt")
-        styles = {'color': '#f00', 'font-size': '10pt'}
-        self.graphWidget.setLabel('left', 'Скорость (Мбит/с)', **styles)
-        self.graphWidget.setLabel('bottom', 'Время (сек)', **styles)
-        self.graphWidget.addLegend()
-        self.graphWidget.showGrid(x=True, y=True)
+
+        # Подключаем сигнал обновления данных
+        self.network_monitoring.data_updated.connect(self.on_data_updated)
 
     def load_adapters(self):
-        adapters = NetworkMonitoring.get_adapters()
+        adapters = self.network_monitoring.get_adapters()
         self.adapterList.clear()
         for name in adapters.keys():
             self.adapterList.addItem(name)
@@ -50,54 +45,34 @@ class MainWindow(QMainWindow):
         self.clearGraphs.clicked.connect(self.on_clear_graphs_clicked)
         self.pingButton.clicked.connect(self.execute_ping_trace)
 
+    def execute_ping_trace(self):
+        address = self.addressInput.text().strip()
+        self.ping_tracer_tool.execute_ping_trace(address)
+
     def update_current_adapter(self):
         if self.adapterList.currentItem():
             adapter_name = self.adapterList.currentItem().text()
-            info = NetworkMonitoring.get_adapter_info_by_name(adapter_name)
+            info = self.network_monitoring.get_adapter_info_by_name(adapter_name)
 
             elapsed_time = 0
-            if NetworkMonitoring._is_measuring and NetworkMonitoring._measure_start_time:
-                elapsed_time = (datetime.now() - NetworkMonitoring._measure_start_time).total_seconds()
+            if self.network_monitoring._is_measuring and self.network_monitoring._measure_start_time:
+                elapsed_time = (datetime.now() - self.network_monitoring._measure_start_time).total_seconds()
                 current_download = info.get('current_download', 0)
                 current_upload = info.get('current_upload', 0)
 
-                self.time_points.append(elapsed_time)
-                self.download_speeds.append(current_download)
-                self.upload_speeds.append(current_upload)
-
-                # Ограничиваем количество точек на графике для производительности
-                max_points = 100 # Например, последние 100 секунд
-                if len(self.time_points) > max_points:
-                    self.time_points = self.time_points[-max_points:]
-                    self.download_speeds = self.download_speeds[-max_points:]
-                    self.upload_speeds = self.upload_speeds[-max_points:]
-
-                self.download_plot.setData(self.time_points, self.download_speeds)
-                self.upload_plot.setData(self.time_points, self.upload_speeds)
-
-                # Автоматическое масштабирование по Y, но фиксированный диапазон по X
-                self.graphWidget.enableAutoRange(axis='y', enable=True)
-                if self.time_points:
-                    self.graphWidget.setXRange(self.time_points[0], self.time_points[-1])
+                self.graph.update_data(elapsed_time, current_download, current_upload)
             else:
-                # Если замер не идет, сбрасываем время и графики (если нужно)
-                self.time_points = []
-                self.download_speeds = []
-                self.upload_speeds = []
-                self.download_plot.setData([], [])
-                self.upload_plot.setData([], [])
-                self.graphWidget.enableAutoRange()
+                self.graph.clear()
 
-
-            self.update_adapter_info_table(info, elapsed_time)
+            self.adapter_info_table.update_info(info, elapsed_time, self.network_monitoring._is_measuring)
 
     def on_adapter_selected(self, item):
         adapter_name = item.text()
-        info = NetworkMonitoring.get_adapter_info_by_name(adapter_name)
-        self.update_adapter_info_table(info, 0)
+        info = self.network_monitoring.get_adapter_info_by_name(adapter_name)
+        self.adapter_info_table.update_info(info, 0, False)
 
     def on_measure_speed_clicked(self):
-        if not NetworkMonitoring._is_measuring:
+        if not self.network_monitoring._is_measuring:
             hours = 0
             minutes = 0
             seconds = 0
@@ -109,164 +84,41 @@ class MainWindow(QMainWindow):
 
             self._timed_measure_duration = measure_duration
 
-            NetworkMonitoring.start_measuring()
-
-            self.time_points = [0]
-            self.download_speeds = [0]
-            self.upload_speeds = [0]
-            self.download_plot.setData(self.time_points, self.download_speeds)
-            self.upload_plot.setData(self.time_points, self.upload_speeds)
-            self.graphWidget.enableAutoRange()
-
-
+            self.network_monitoring.start_measuring()
+            self.graph.clear()
             self.measureSpeedButton.setText("Остановить замер")
             self.update_timer.start()
-
-
         else:
             self._timed_measure_duration = None
             self.stop_measurement_and_update_ui()
 
     def stop_measurement_and_update_ui(self):
         """Останавливает замер и обновляет UI"""
-        NetworkMonitoring.stop_measuring()
+        self.network_monitoring.stop_measuring()
         self.measureSpeedButton.setText("Начать замер")
         self.update_timer.stop()
-        # При ручной остановке обновляем таблицу с прошедшим временем (которое NetworkMonitoring вернет как 0, но avg/max будут последними)
-        # Время в таблице будет 00:00:00, так как замер остановлен.
-        if self.adapterList.currentItem():
-             adapter_name = self.adapterList.currentItem().text()
-             info = NetworkMonitoring.get_adapter_info_by_name(adapter_name)
-             self.update_adapter_info_table(info, 0)
-
-    def on_measure_timer_finished(self):
-        """Слот, вызываемый по истечении времени замера"""
-        if NetworkMonitoring._is_measuring:
-            # Получаем последние данные адаптера ДО остановки замера
-            if self.adapterList.currentItem():
-                adapter_name = self.adapterList.currentItem().text()
-                info = NetworkMonitoring.get_adapter_info_by_name(adapter_name)
-
-                # Добавляем финальную точку на график с точным временем завершения
-                if self._timed_measure_duration is not None:
-                    final_time = self._timed_measure_duration
-                    current_download = info.get('current_download', 0)
-                    current_upload = info.get('current_upload', 0)
-
-                    # Проверяем, чтобы не добавлять дублирующую точку, если таймер сработал точно в конце секунды
-                    if not self.time_points or self.time_points[-1] < final_time:
-                        self.time_points.append(final_time)
-                        self.download_speeds.append(current_download)
-                        self.upload_speeds.append(current_upload)
-
-                    self.download_plot.setData(self.time_points, self.download_speeds)
-                    self.upload_plot.setData(self.time_points, self.upload_speeds)
-
-                    # Обновляем таблицу с заданной длительностью
-                    self.update_adapter_info_table(info, final_time)
-                else:\
-                    # Если длительность почему-то не сохранилась, просто обновляем как при ручной остановке
-                     self.update_adapter_info_table(info, 0)
-
-            # Останавливаем замер и обновляем UI (кнопка и таймер)
-            # Сбрасываем сохраненную длительность
-            self._timed_measure_duration = None
-            self.stop_measurement_and_update_ui()
 
     def on_clear_graphs_clicked(self):
-        """Очищает данные графика"""
-        self.time_points = []
-        self.download_speeds = []
-        self.upload_speeds = []
-        self.download_plot.setData([], [])
-        self.upload_plot.setData([], [])
-        self.graphWidget.enableAutoRange()
-        self._timed_measure_duration = None
+        """Очищает данные графика после подтверждения"""
+        reply = QMessageBox.question(
+            self,
+            'Подтверждение',
+            'Вы уверены, что хотите очистить график?',
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+            QMessageBox.StandardButton.No
+        )
+        if reply == QMessageBox.StandardButton.Yes:
+            self.graph.clear()
+            self._timed_measure_duration = None
+            if self.adapterList.currentItem():
+                adapter_name = self.adapterList.currentItem().text()
+                info = self.network_monitoring.get_adapter_info_by_name(adapter_name)
+                self.adapter_info_table.update_info(info, 0, False)
 
-    def update_adapter_info_table(self, info, elapsed_time_seconds):
-        self.infoTable.setColumnCount(2)
-        self.infoTable.setHorizontalHeaderLabels(['Параметр', 'Значение'])
-
-        if NetworkMonitoring._is_measuring or elapsed_time_seconds > 0:
-            hours = int(elapsed_time_seconds // 3600)
-            minutes = int((elapsed_time_seconds % 3600) // 60)
-            seconds = int(elapsed_time_seconds % 60)
-            measurement_time_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
-        else:
-            measurement_time_str = '00:00:00'
-
-        # Список параметров и их значений
-        parameters = [
-            ('ID адаптера', info.get('id', '')),
-            ('Описание', info.get('description', '')),
-            ('Тип интерфейса', info.get('interface_type', '')),
-            ('IP адрес', info.get('ip', '')),
-            ('MAC адрес', info.get('mac', '')),
-            ('Скорость адаптера', f"{info.get('speed', '0')} Мбит/с"),
-            ('MTU', str(info.get('mtu', ''))),
-            ('Статус', info.get('status', '')),
-            ('Время замера', measurement_time_str), # Используем отформатированное время
-            ('Загрузка - текущая', f"{info.get('current_download', '0')} Мбит/с"),
-            ('Загрузка - максимальная', f"{info.get('max_download', '0')} Мбит/с"),
-            ('Загрузка - средняя', f"{info.get('avg_download', '0')} Мбит/с"),
-            ('Отдача - текущая', f"{info.get('current_upload', '0')} Мбит/с"),
-            ('Отдача - максимальная', f"{info.get('max_upload', '0')} Мбит/с"),
-            ('Отдача - средняя', f"{info.get('avg_upload', '0')} Мбит/с")
-        ]
-
-        # Устанавливаем количество строк
-        self.infoTable.setRowCount(len(parameters))
-
-        # Заполняем таблицу
-        for row, (param, value) in enumerate(parameters):
-            self.infoTable.setItem(row, 0, QTableWidgetItem(param))
-            self.infoTable.setItem(row, 1, QTableWidgetItem(str(value)))
-
-        # Подгоняем размер столбцов под содержимое
-        self.infoTable.resizeColumnsToContents()
-
-    def execute_ping_trace(self):
-            address = self.addressInput.text().strip()
-            if not address:
-                return
-            
-            try:
-                if self.pingChoice.isChecked():
-                    # Выполняем ping
-                    if platform.system().lower() == "windows":
-                        command = ["ping", "-n", "4", address]
-                    else:
-                        command = ["ping", "-c", "4", address]
-                elif self.tracerChoice.isChecked():
-                    # Выполняем tracert/traceroute
-                    if platform.system().lower() == "windows":
-                        command = ["tracert", address]
-                    else:
-                        command = ["traceroute", address]
-
-                process = subprocess.Popen(
-                    command,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    universal_newlines=True,
-                    encoding='cp866' if platform.system().lower() == "windows" else 'utf-8'
-                )
-
-                # Читаем вывод команды
-                output, error = process.communicate()
-                
-                # Очищаем список перед добавлением новых результатов
-                #self.outputList.clear()
-                
-                # Добавляем результаты в outputList
-                for line in output.splitlines():
-                    item = QListWidgetItem(line)
-                    self.outputList.addItem(item)
-
-                if error:
-                    error_item = QListWidgetItem(f"Ошибка: {error}")
-                    self.outputList.addItem(error_item)
-
-            except Exception as e:
-                error_item = QListWidgetItem(f"Ошибка: {str(e)}")
-                self.outputList.addItem(error_item)
+    def on_data_updated(self, info, elapsed_time):
+        """Обработчик обновления данных от NetworkMonitoring"""
+        if self.adapterList.currentItem() and self.adapterList.currentItem().text() == info['id']:
+            current_download = info.get('current_download', 0)
+            current_upload = info.get('current_upload', 0)
+            self.graph.update_data(elapsed_time, current_download, current_upload)
+            self.adapter_info_table.update_info(info, elapsed_time, self.network_monitoring._is_measuring)
