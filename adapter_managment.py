@@ -1,22 +1,21 @@
 import psutil
 from datetime import datetime
 
-class AdapterManagement:
+class NetworkMonitoring:
     _stats_history = {}  # Для хранения истории измерений
     _is_measuring = False  # Флаг активного измерения
     _measure_start_time = None  # Время начала замера
-
     @staticmethod
     def start_measuring():
-        AdapterManagement._is_measuring = True
+        NetworkMonitoring._is_measuring = True
         # Сбрасываем историю при начале нового измерения
-        AdapterManagement._stats_history = {}
-        AdapterManagement._measure_start_time = datetime.now()
+        NetworkMonitoring._stats_history = {}
+        NetworkMonitoring._measure_start_time = datetime.now()
 
     @staticmethod
     def stop_measuring():
-        AdapterManagement._is_measuring = False
-        AdapterManagement._measure_start_time = None
+        NetworkMonitoring._is_measuring = False
+        NetworkMonitoring._measure_start_time = None
 
     @staticmethod
     def get_adapters():
@@ -31,8 +30,8 @@ class AdapterManagement:
             return None
 
         # Вычисляем время замера
-        if AdapterManagement._is_measuring and AdapterManagement._measure_start_time:
-            delta = datetime.now() - AdapterManagement._measure_start_time
+        if NetworkMonitoring._is_measuring and NetworkMonitoring._measure_start_time:
+            delta = datetime.now() - NetworkMonitoring._measure_start_time
             measurement_time = str(delta).split('.')[0]  # ЧЧ:ММ:СС
         else:
             measurement_time = '0'
@@ -77,9 +76,9 @@ class AdapterManagement:
             counter = io_counters[adapter_name]
             
             # Инициализируем историю для адаптера, если идет измерение
-            if AdapterManagement._is_measuring:
-                if adapter_name not in AdapterManagement._stats_history:
-                    AdapterManagement._stats_history[adapter_name] = {
+            if NetworkMonitoring._is_measuring:
+                if adapter_name not in NetworkMonitoring._stats_history:
+                    NetworkMonitoring._stats_history[adapter_name] = {
                         'last_bytes_recv': counter.bytes_recv,
                         'last_bytes_sent': counter.bytes_sent,
                         'max_download': 0,
@@ -89,7 +88,7 @@ class AdapterManagement:
                         'count': 0
                     }
 
-                history = AdapterManagement._stats_history[adapter_name]
+                history = NetworkMonitoring._stats_history[adapter_name]
                 
                 # Рассчитываем текущую скорость
                 bytes_recv = counter.bytes_recv - history['last_bytes_recv']
