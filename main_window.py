@@ -1,5 +1,4 @@
 from PyQt6.QtWidgets import QMainWindow, QTableWidgetItem, QMessageBox
-from PyQt6.uic import loadUi
 from PyQt6.QtCore import QTimer
 from PyQt6.QtGui import QIcon
 from datetime import datetime
@@ -8,7 +7,7 @@ from graph import Graph
 from network_monitoring import NetworkMonitoring
 from ping_tool import PingTracerTool
 from adapter_info_table import AdapterInfoTable
-from database import Database
+from database.database import Database
 
 class MainWindow(QMainWindow):
     def __init__(self):

@@ -2,7 +2,7 @@ import sqlite3
 from datetime import datetime
 
 class Database:
-    def __init__(self, db_name="network_monitor.db"):
+    def __init__(self, db_name="database/network_monitor.db"):
         self.db_name = db_name
         self._init_db()
 
